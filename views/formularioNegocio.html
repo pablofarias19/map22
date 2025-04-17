@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear nuevo negocio | GeoComercial</title>
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="../assets/images/favicon.ico" type="image/x-icon">
+
+    <!-- Hoja de estilos principal -->
+    <link rel="stylesheet" href="../assets/css/estilos-mapa-comercial.css">
+
+    <!-- Leaflet & complementos (versión unificada 1.9.4) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css">
+
+    <!-- Font Awesome 6 (íconos) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+    <!-- Overlay de carga (estilos mínimos en línea para mantener independencia) -->
+    <style>
+        .overlay-carga{position:fixed;inset:0;background-color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;z-index:10000;visibility:hidden;opacity:0;transition:opacity .3s ease,visibility 0s .3s linear}
+        .overlay-carga.visible{visibility:visible;opacity:1;transition:opacity .3s ease}
+        .overlay-carga i{font-size:3rem;color:var(--color-primario,#007bff)}
+    </style>
+</head>
+<body>
+<!-- Overlay global -->
+<div id="overlay_carga" class="overlay-carga" aria-hidden="true"><i class="fas fa-spinner fa-spin" aria-label="Cargando"></i></div>
+
+<div class="contenedor-app">
+    <!-- Cabecera -->
+    <header class="cabecera-app">
+        <div class="logo-app">
+            <img src="../assets/images/logo.png" alt="Logo GeoComercial" width="32" height="32">
+            <span>GeoComercial</span>
+        </div>
+        <nav id="nav_usuario" class="nav-app"><!-- Dinámico --></nav>
+    </header>
+
+    <!-- Contenido principal -->
+    <main class="contenido-principal">
+        <div class="contenedor-formulario">
+            <h1 class="titulo-formulario">Crear nuevo negocio</h1>
+
+            <form id="form_negocio" class="formulario-entidad" method="POST" action="../../api/negocios.php" enctype="multipart/form-data" novalidate>
+                <!-- CSRF (rellenado por el backend) -->
+                <input type="hidden" name="csrf_token" value="{{CSRF_TOKEN}}">
+
+                <!-- Información básica -->
+                <h2 class="subtitulo-seccion">Información básica</h2>
+                <div class="grupos-formulario">
+                    <div class="grupo-formulario">
+                        <label for="nombre_comercial" class="etiqueta-campo requerido">Nombre comercial</label>
+                        <input type="text" id="nombre_comercial" name="nombre_comercial" class="campo-texto" maxlength="100" required autofocus>
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+
+                    <div class="grupo-formulario">
+                        <label for="lema_publicitario" class="etiqueta-campo">Lema publicitario</label>
+                        <input type="text" id="lema_publicitario" name="lema_publicitario" class="campo-texto" maxlength="255">
+                    </div>
+
+                    <div class="grupo-formulario">
+                        <label for="id_categoria" class="etiqueta-campo requerido">Categoría</label>
+                        <select id="id_categoria" name="id_categoria" class="campo-select" required>
+                            <option value="">Seleccionar categoría</option>
+                        </select>
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+
+                    <div class="grupo-formulario">
+                        <label for="id_area_produccion" class="etiqueta-campo">Área de producción</label>
+                        <select id="id_area_produccion" name="id_area_produccion" class="campo-select">
+                            <option value="">Seleccionar área</option>
+                        </select>
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+                </div>
+
+                <!-- Contacto -->
+                <h2 class="subtitulo-seccion">Información de contacto</h2>
+                <div class="grupos-formulario">
+                    <div class="grupo-formulario">
+                        <label for="direccion" class="etiqueta-campo requerido">Dirección</label>
+                        <input type="text" id="direccion" name="direccion" class="campo-texto" maxlength="255" required>
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+
+                    <div class="grupo-formulario">
+                        <label for="telefono" class="etiqueta-campo">Teléfono</label>
+                        <input type="tel" id="telefono" name="telefono" class="campo-texto" maxlength="50" pattern="^[0-9+\s()-]{6,}$">
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+
+                    <div class="grupo-formulario">
+                        <label for="email" class="etiqueta-campo">Correo electrónico</label>
+                        <input type="email" id="email" name="email" class="campo-texto" maxlength="255">
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+
+                    <div class="grupo-formulario">
+                        <label for="sitio_web" class="etiqueta-campo">Sitio web</label>
+                        <input type="url" id="sitio_web" name="sitio_web" class="campo-texto" maxlength="255" placeholder="https://ejemplo.com">
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+                </div>
+
+                <!-- Ubicación -->
+                <h2 class="subtitulo-seccion">Ubicación en el mapa</h2>
+                <p class="instrucciones-mapa">Haz clic en el mapa, arrastra el marcador o busca una dirección.</p>
+                <div id="mapa_seleccion" class="mapa-seleccion-ubicacion" aria-label="Mapa para seleccionar ubicación">Cargando…</div>
+                <input type="hidden" id="latitud" name="latitud" required>
+                <input type="hidden" id="longitud" name="longitud" required>
+                <div class="mensaje-error-mapa" aria-live="polite"></div>
+
+                <!-- Multimedia -->
+                <h2 class="subtitulo-seccion">Imágenes y video</h2>
+                <div class="grupos-formulario">
+                    <div class="grupo-formulario">
+                        <label class="etiqueta-campo">Imagen principal</label>
+                        <input type="file" name="imagen_principal" accept="image/jpeg,image/png,image/gif">
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+
+                    <div class="grupo-formulario">
+                        <label class="etiqueta-campo">Imagen secundaria</label>
+                        <input type="file" name="imagen_secundaria" accept="image/jpeg,image/png,image/gif">
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+
+                    <div class="grupo-formulario">
+                        <label for="link_video" class="etiqueta-campo">Enlace de video (YouTube)</label>
+                        <input type="url" id="link_video" name="link_video" class="campo-texto" maxlength="255" placeholder="https://www.youtube.com/watch?v=…">
+                        <div class="mensaje-error" aria-live="polite"></div>
+                    </div>
+                </div>
+
+                <!-- Zona de influencia -->
+                <h2 class="subtitulo-seccion">Zona de influencia <span class="opcional">(opcional)</span></h2>
+                <p class="instrucciones-mapa">Dibuja un polígono que represente tu área de servicio.</p>
+                <div id="mapa_zona" class="mapa-seleccion-zona" aria-label="Mapa para dibujar zona de influencia">Cargando…</div>
+                <input type="hidden" id="zona_influencia_geojson" name="zona_influencia_geojson">
+                <div class="mensaje-error" aria-live="polite"></div>
+
+                <!-- Acciones -->
+                <div class="acciones-formulario">
+                    <button type="button" class="boton-cancelar" onclick="history.back()">Cancelar</button>
+                    <button type="submit" class="boton-guardar"><i class="fas fa-save"></i> Guardar negocio</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- Pie -->
+    <footer class="pie-app">
+        <p>&copy; <span id="año_actual"></span> GeoComercial. Todos los derechos reservados.</p>
+    </footer>
+</div>
+
+<!-- Contenedor global de notificaciones -->
+<div id="contenedor_notificaciones" aria-live="assertive"></div>
+
+<!-- Scripts Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js" defer></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js" defer></script>
+
+<!-- Utilidades y lógica del formulario -->
+<script src="../assets/js/utilidades.js" defer></script>
+<script src="../assets/js/auth.js" defer></script>
+<script src="../assets/js/formularioNegocio.js" defer></script>
+
+<script>
+// Año dinámico en footer (ejecuta cuando el DOM esté listo)
+document.addEventListener('DOMContentLoaded',()=>{
+    document.getElementById('año_actual').textContent = new Date().getFullYear();
+});
+</script>
+</body>
+</html>

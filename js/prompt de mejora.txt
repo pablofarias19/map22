@@ -1,0 +1,140 @@
+
+¡Excelente! Vamos a por la Fase 2 la refactorización a módulos.
+Aquí tienes un prompt completo diseñado para guiarte (o a una IA) en la creación de los archivos utilidades.js, auth.js, modal.js, notify.js, share.js, etc., y en la modificación de los archivos existentes (app.js, formularioNegocio.js, ventanasDetalles.js, marcadoresPopups.js) para usar una estructura modular con importexport.
+Prompt Completo para Refactorización Modular
+Objetivo Refactorizar la aplicación de mapa comercial para mejorar su estructura y mantenibilidad, moviendo funcionalidades comunes y globales desde app.js a módulos ES6 dedicados (utilidades.js, auth.js, modal.js, notify.js, share.js, mapUtils.js, formUtils.js). Se modificará marcadoresPopups.js para actuar como una fábrica de marcadorespopups importando utilidades. Los archivos existentes (app.js, formularioNegocio.js, ventanasDetalles.js) serán modificados para eliminar el código movido y utilizar los nuevos módulos mediante import.
+Estado Actual
+app.js Contiene la lógica principal, inicialización del mapa, manejo de datos, UI, y muchas funciones de utilidad, modales, notificaciones definidas globalmente. Usa su propia lógica para crear marcadorespopups.
+marcadoresPopups.js Actualmente casi vacío o con la función registrarInteraccion residual. Su lógica original de creación de marcadorespopups no se usa.
+formularioNegocio.js Maneja el formulario de negocios, pero depende de funciones globales definidas en app.js y tiene inconsistencias en endpoints API.
+ventanasDetalles.js Renderiza el HTML para los detalles en modales, pero depende de funciones globales, tiene listeners incorrectos y lógica que debería estar en app.js.
+Archivos utilidades.js, auth.js, modal.js, etc., no existen.
+Pasos Detallados
+Crear Nuevos Archivos Módulo
+Crea los siguientes archivos JavaScript (p.ej., en una carpeta srcmodules o similar, ajusta las rutas de importación en los pasos siguientes si es necesario)
+utilidades.js
+Mover las siguientes funciones desde app.js a utilidades.js
+formatearFecha
+formatearFechaParaInput
+formatearFechaParaInputDate
+formatearPrecio (la versión añadida recientemente)
+extraerYouTubeID (la versión única y consistente)
+sanitizeHTML
+validarPassword (aunque solo se use en formularios de registroperfil, puede vivir aquí)
+Añadir export delante de cada una de estas funciones en utilidades.js.
+auth.js
+Mover las siguientes funciones desde app.js a auth.js
+obtenerUsuarioActual
+getAuthHeader
+(Opcional pero recomendado) Mover también comprobarLogin, cerrarSesion, y la lógica relacionada con el token de localStorage.
+Añadir export delante de las funciones que necesiten ser usadas por otros módulos (obtenerUsuarioActual, getAuthHeader, cerrarSesion, comprobarLogin).
+modal.js
+Mover las siguientes funciones desde app.js a modal.js
+crearModal
+mostrarModal
+cerrarModal
+Añadir export delante de cada una de estas funciones.
+notify.js
+Mover las siguientes funciones desde app.js a notify.js
+inicializarNotificaciones
+mostrarNotificacion
+cerrarNotificacion
+Añadir export delante de cada una de estas funciones.
+share.js
+Mover las siguientes funciones desde app.js a share.js
+compartirEntidad
+mostrarCompartirFallback
+Añadir export delante de cada una de estas funciones.
+mapUtils.js
+Mover las siguientes funciones desde app.js a mapUtils.js
+inicializarMapaMiniDetalles
+inicializarMapaMini (usada en formularios)
+destacarMarcador
+ocultarControlesEdicion, mostrarControlesEdicion (si aplican globalmente)
+Considerar mover onLocationFound, onLocationError si se quiere encapsular más la lógica de geolocalización.
+Añadir export a las funciones necesarias.
+formUtils.js
+Mover las siguientes funciones desde app.js a formUtils.js
+cargarOpcionesSelect
+setupImagePreview
+Considerar mover validarCampo, validarFormularioCompleto si se quieren hacer más genéricas, aunque podrían quedarse en los archivos de formulario específicos si son muy particulares. Por ahora, dejémoslas donde están o en formularioNegocio.js.
+Considerar mover enviarFormularioEntidad aquí si se puede generalizar lo suficiente. Por ahora, dejémosla en app.js ya que actualiza UI global.
+Añadir export a las funciones movidas.
+Modificar marcadoresPopups.js
+Objetivo Convertirlo en una fábrica de marcadores y contenido de popups, sin otra lógica.
+Eliminar La función registrarInteraccion (se moverá a app.js o api.js). Eliminar API_URLS.
+Añadir Imports Importar las utilidades necesarias
+import { extraerYouTubeID, sanitizeHTML, formatearFecha, formatearPrecio } from '.utilidades.js';  Ajustar ruta
+ Importar configuración si se mueve a un archivo config.js
+ import { emojiNegocios, coloresEntidades } from '.config.js';
+Use code with caution.
+JavaScript
+Asegurar Uso de Imports Verificar que crearPopupGenerico, crearPopupTipo usen las funciones importadas (extraerYouTubeID, formatearFecha, formatearPrecio, sanitizeHTML) en lugar de las globales o implementaciones locales.
+Mantener _coordsOK, crearPopupGenerico, crearMarcadorGenerico, crearPopupTipo, crearMarcadorTipo.
+Añadir Exports Exportar las funciones crearMarcadorTipo para que app.js las use
+export { crearMarcadorNegocio, crearMarcadorEvento, crearMarcadorOferta, crearMarcadorEncuesta };
+Use code with caution.
+JavaScript
+Eliminar Dependencias Globales Quitar referencias a window.emoji, window.colores. Asumir que estas constantes están disponibles en el scope del módulo (ya sea definidas globalmente por app.js todavía, o idealmente importadas de un config.js).
+Modificar app.js
+Eliminar Funciones Movidas Borrar las definiciones de todas las funciones que se movieron a los módulos (utilidades.js, auth.js, modal.js, notify.js, share.js, mapUtils.js, formUtils.js).
+Añadir Imports Añadir sentencias import en la parte superior para todas las funciones que ahora se necesitan desde los nuevos módulos. Ejemplo
+import { formatearFecha, sanitizeHTML, extraerYouTubeID  etc  } from '.utilidades.js';  Ajustar ruta
+import { obtenerUsuarioActual, getAuthHeader, cerrarSesion  etc  } from '.auth.js';
+import  as modal from '.modal.js';  Importar como objeto para usar modal.create(), modal.show()
+import  as notify from '.notify.js';
+import  as share from '.share.js';
+import { destacarMarcador, initMiniMap  etc  } from '.mapUtils.js';
+import { cargarOpcionesSelect, setupImagePreview } from '.formUtils.js';
+import { crearMarcadorNegocio, crearMarcadorEvento  etc  } from '.marcadoresPopups.js';  Importar las fábricas
+Use code with caution.
+JavaScript
+Actualizar Llamadas Reemplazar todas las llamadas a las funciones que antes eran globales para usar las versiones importadas (ej., mostrarNotificacion(...) se convierte en notify.show(...), crearModal(...) en modal.create(...), compartirEntidad(...) en share.shareEntity(...)).
+Actualizar Creación de Marcadores Modificar cargarNegocios, cargarEventos, etc., para que usen las funciones importadas de marcadoresPopups.js
+ Dentro de cargarNegocios(data)
+data.features.forEach(feature = {
+    try {
+          Llama a la fábrica importada
+         const marcador = crearMarcadorNegocio(feature.properties);  Pasar los datos necesarios
+         if (marcador) {
+              Añadir listener para interacción (si registrarInteraccion se queda en app.js)
+             marcador.on('click', () = registrarInteraccion('negocio', feature.properties.id, 'click'));
+             marcadores.push(marcador);
+         }
+    } catch (e) {  ...  }
+});
+clusterNegocios.addLayers(marcadores);
+Use code with caution.
+JavaScript
+Mover registrarInteraccion Mover la definición de registrarInteraccion aquí (o a un futuro api.js), asegurándose de que use API_BASE y auth.obtenerUsuarioActual().
+Inicialización Modificar DOMContentLoaded para llamar a notify.init().
+Listeners Delegados Actualizar setupPopupButtons y setupModalActionButtons para llamar a las funciones importadas (ej., modal.show, share.shareEntity, mapUtils.destacarMarcador, etc.).
+Modificar formularioNegocio.js
+Eliminar Funciones Globales Usadas Si alguna función que estaba global en app.js fue movida a un módulo y formularioNegocio.js la necesita, debe importarla.
+Añadir Imports Añadir imports necesarios desde los nuevos módulos
+import { mostrarNotificacion } from '.notify.js';  Ajustar ruta
+import { obtenerUsuarioActual, getAuthHeader } from '.auth.js';
+import { initMiniMap } from '.mapUtils.js';
+import { cargarOpcionesSelect } from '.formUtils.js';
+ NO necesita importar modales si no los usa directamente
+Use code with caution.
+JavaScript
+Actualizar Llamadas Asegurarse de usar las funciones importadas (notify.show, mapUtils.initMiniMap, etc.).
+API Endpoints Asegurarse de que usa API_BASE (que ahora debería ser importado o seguir siendo global temporalmente) o el objeto API_ENDPOINTS si se crea.
+Modificar ventanasDetalles.js
+Objetivo Que solo renderice HTML y no tenga lógica de aplicación ni listeners.
+Eliminar Imports Incorrectos Quitar los import de utilidades.js, modal.js, mapa.js.
+Añadir Imports Correctos Importar solo lo necesario para el renderizado
+import { extraerYouTubeID, sanitizeHTML, formatearFecha, formatearPrecio } from '.utilidades.js';  Ajustar ruta
+Use code with caution.
+JavaScript
+Actualizar Llamadas Usar las funciones importadas (utilidades.sanitizeHTML, etc.).
+Eliminar Listeners Quitar todos los addEventListener que añadía a los botones.
+Asegurar Data Attributes Verificar que los botones generados tengan los data-attributes correctos (data-tipo, data-id, data-lat, data-lng, etc.) para que app.js pueda manejarlos por delegación.
+Exportar Funciones Asegurarse de que renderizarDetallesTipo sigan exportándose para que app.js las pueda importar y usar.
+Verificación Final
+Revisar la consola del navegador en busca de errores de importaciónexportación o funciones no definidas.
+Probar todas las funcionalidades carga de mapa, geolocalización, creaciónedición de entidades, apertura de popups y modales, clics en botones de popupsmodales (detalles, compartir, cómo llegar, contactar, ver negociooferta relacionada), filtros, estadísticas, loginlogout.
+Resultado Esperado
+Una base de código donde las responsabilidades están mejor separadas en módulos, utilizando importexport de ES6. app.js actúa como el punto de entrada principal y orquestador, mientras que los módulos proporcionan funcionalidades específicas y reutilizables. Los archivos formularioNegocio.js y ventanasDetalles.js son más limpios y enfocados.
+Este prompt es detallado. Puedes usarlo como guía paso a paso o dárselo a una IA como GPT-4 para que intente generar el código refactorizado, pero siempre revisa cuidadosamente el resultado, ya que la refactorización automática puede introducir errores sutiles. ¡Mucha suerte!

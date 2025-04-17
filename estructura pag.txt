@@ -1,0 +1,306 @@
+# Instrucciones de Implementación Final
+
+Para completar la implementación de tu aplicación geoespacial comercial, he desarrollado todos los archivos esenciales del sistema. Ahora necesitas seguir estos pasos para poner todo en funcionamiento:
+
+## 1. Estructura de Archivos
+
+Organiza los archivos en la siguiente estructura:
+
+```
+proyecto_geoespacial/
+├── api/
+│   ├── auth.php
+│   ├── categorias_eventos.php (implementar)
+│   ├── categorias_negocios.php (implementar)
+│   ├── encuestas.php (implementar)
+│   ├── eventos.php (implementar)
+│   ├── negocios.php (implementar)
+│   ├── ofertas.php (implementar)
+│   └── zonas_influencia.php (implementar)
+├── assets/
+│   ├── css/
+│   │   └── estilos-mapa-comercial.css
+│   ├── js/
+│   │   ├── app.js
+│   │   ├── formularioNegocio.js
+│   │   └── marcadoresPopups.js
+│   └── images/
+│       └── logo.png
+├── config/
+│   ├── database.php
+│   └── database.config.php (crear según tu entorno)
+├── controllers/
+│   ├── EncuestaController.php
+│   ├── EventoController.php
+│   ├── NegocioController.php
+│   ├── OfertaController.php
+│   └── ZonaInfluenciaController.php
+├── models/
+│   └── (implementar según necesidad)
+├── uploads/
+│   ├── negocios/
+│   ├── eventos/
+│   ├── ofertas/
+│   └── encuestas/
+├── utils/
+│   ├── Autenticacion.php
+│   └── Validator.php
+├── views/
+│   ├── index.php (página principal con el mapa)
+│   ├── formulario_negocio.php
+│   ├── mis_negocios.php
+│   └── (otras páginas según necesidad)
+├── index.php (redireccionamiento a views/index.php)
+└── .htaccess
+```
+
+## 2. Configuración de Base de Datos
+
+1. Crea la base de datos MySQL usando los scripts proporcionados:
+   ```sql
+   CREATE DATABASE mapa_comercial CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+   ```
+
+2. Configura las credenciales de la base de datos en `config/database.config.php`:
+   ```php
+   <?php
+   return [
+       'host' => 'localhost',
+       'db_name' => 'mapa_comercial',
+       'username' => 'tu_usuario',
+       'password' => 'tu_contraseña'
+   ];
+   ```
+
+3. Establece los permisos adecuados para el archivo de configuración:
+   ```bash
+   chmod 600 config/database.config.php
+   ```
+
+## 3. Implementación de Archivos Pendientes
+
+### Archivos API
+
+Cada archivo API debe seguir la estructura del archivo `auth.php` proporcionado:
+1. Incluir las dependencias necesarias
+2. Configurar encabezados CORS
+3. Inicializar controladores
+4. Manejar peticiones según método HTTP
+5. Implementar funciones específicas para cada operación
+
+Ejemplo para `api/negocios.php`:
+```php
+<?php
+require_once '../config/database.php';
+require_once '../controllers/NegocioController.php';
+require_once '../utils/Autenticacion.php';
+
+// Configurar encabezados para API
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Inicializar conexión a la base de datos
+$database = new Database();
+$db = $database->getConnection();
+
+// Inicializar controlador
+$negocioController = new NegocioController($db);
+$auth = new Autenticacion($db);
+
+// Manejar preflight CORS
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
+}
+
+// Manejar petición según método
+switch($_SERVER['REQUEST_METHOD']) {
+    case 'GET':
+        // Implementar manejo de petición GET
+        break;
+    case 'POST':
+        // Implementar manejo de petición POST
+        break;
+    // Implementar otros métodos según necesidad
+}
+```
+
+### Páginas de Vistas
+
+La página principal del mapa (`views/index.php`) debe incluir:
+1. HTML básico con el contenedor del mapa
+2. Enlaces a las hojas de estilo (CSS) 
+3. Enlaces a los scripts de JavaScript
+4. Estructura para la navegación y paneles
+
+Ejemplo:
+```html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa Comercial</title>
+    <!-- Estilos CSS -->
+    <link rel="stylesheet" href="../assets/css/estilos-mapa-comercial.css">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css">
+    <!-- Otras librerías CSS -->
+</head>
+<body>
+    <div class="contenedor-app">
+        <!-- Cabecera -->
+        <header class="cabecera-app">
+            <!-- Contenido de cabecera -->
+        </header>
+        
+        <!-- Contenedor del mapa -->
+        <div class="contenedor-mapa">
+            <div id="mapa_comercial"></div>
+        </div>
+        
+        <!-- Pie de página -->
+        <footer class="pie-app">
+            <!-- Contenido del pie -->
+        </footer>
+    </div>
+    
+    <!-- Scripts JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script src="../assets/js/app.js"></script>
+    <script src="../assets/js/marcadoresPopups.js"></script>
+</body>
+</html>
+```
+
+## 4. Permisos y Configuración del Servidor
+
+1. Configura el archivo `.htaccess` para el enrutamiento y la seguridad:
+   ```apache
+   # Activar rewrite engine
+   RewriteEngine On
+   
+   # Proteger archivos y directorios sensibles
+   <FilesMatch "(^\.|\.(config|php|sql)$)">
+       Order allow,deny
+       Deny from all
+   </FilesMatch>
+   
+   # Permitir acceso a archivos específicos
+   <FilesMatch "^(index\.php|api\/.*\.php)$">
+       Order allow,deny
+       Allow from all
+   </FilesMatch>
+   
+   # Redirigir a index.php
+   RewriteCond %{REQUEST_FILENAME} !-f
+   RewriteCond %{REQUEST_FILENAME} !-d
+   RewriteRule ^(.*)$ index.php [QSA,L]
+   
+   # Configuraciones de seguridad
+   <IfModule mod_headers.c>
+       Header set X-Content-Type-Options "nosniff"
+       Header set X-XSS-Protection "1; mode=block"
+       Header set X-Frame-Options "SAMEORIGIN"
+   </IfModule>
+   ```
+
+2. Asegúrate de que los directorios de carga tengan los permisos adecuados:
+   ```bash
+   mkdir -p uploads/{negocios,eventos,ofertas,encuestas}
+   chmod 755 uploads
+   chmod 755 uploads/{negocios,eventos,ofertas,encuestas}
+   ```
+
+## 5. Optimizaciones finales
+
+1. **Minificación de archivos**: Para producción, minifica los archivos CSS y JavaScript para mejorar el rendimiento:
+   ```bash
+   # Usando herramientas como UglifyJS y CleanCSS
+   uglifyjs assets/js/app.js -o assets/js/app.min.js
+   cleancss assets/css/estilos-mapa-comercial.css -o assets/css/estilos-mapa-comercial.min.css
+   ```
+
+2. **Caché**: Configura la caché del navegador para archivos estáticos:
+   ```apache
+   <IfModule mod_expires.c>
+       ExpiresActive On
+       ExpiresByType image/jpg "access plus 1 year"
+       ExpiresByType image/jpeg "access plus 1 year"
+       ExpiresByType image/png "access plus 1 year"
+       ExpiresByType image/gif "access plus 1 year"
+       ExpiresByType text/css "access plus 1 month"
+       ExpiresByType application/javascript "access plus 1 month"
+   </IfModule>
+   ```
+
+3. **Compresión**: Habilita la compresión GZIP para reducir el tamaño de los archivos transmitidos:
+   ```apache
+   <IfModule mod_deflate.c>
+       AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+   </IfModule>
+   ```
+
+## 6. Pruebas y Depuración
+
+1. **Prueba cada componente por separado**:
+   - Verifica la conexión a la base de datos
+   - Prueba el sistema de autenticación
+   - Comprueba la carga del mapa
+   - Valida la creación y edición de entidades
+
+2. **Habilita logs de errores** durante el desarrollo:
+   ```php
+   // En la parte superior de index.php
+   ini_set('display_errors', 1);
+   ini_set('display_startup_errors', 1);
+   error_reporting(E_ALL);
+   ```
+
+3. **Prueba en diferentes dispositivos y navegadores** para asegurar compatibilidad.
+
+## 7. Seguridad
+
+1. **Validación de datos**: Asegúrate de que toda entrada de usuario sea validada tanto en el cliente como en el servidor.
+
+2. **Protección contra CSRF**: Implementa tokens CSRF en todos los formularios.
+
+3. **Protección contra XSS**: Escapa adecuadamente todas las salidas de datos en HTML.
+
+4. **Protección contra SQL Injection**: Usa siempre consultas preparadas con PDO.
+
+5. **Almacenamiento seguro de contraseñas**: Usa siempre bcrypt para el hash de contraseñas.
+
+## 8. Despliegue
+
+1. **Entorno de desarrollo**:
+   - Configura un servidor local como XAMPP, WAMP o Docker
+   - Usa el mismo esquema de base de datos que en producción
+
+2. **Entorno de producción**:
+   - Contrata un hosting con soporte para PHP 7.4+ y MySQL 5.7+
+   - Configura un dominio para tu aplicación
+   - Configura SSL para conexiones seguras (HTTPS)
+   - Desactiva la visualización de errores:
+     ```php
+     ini_set('display_errors', 0);
+     error_reporting(E_ALL);
+     ```
+
+Con estos pasos, tu aplicación geoespacial comercial estará lista para funcionar y podrás comenzar a añadir negocios, eventos, ofertas y encuestas al mapa.
+# Instrucciones de Implementación Final
+
+Para completar la implementación de tu aplicación geoespacial comercial, he desarrollado todos los archivos esenciales del sistema. Ahora necesitas seguir estos pasos para poner todo en funcionamiento:
+
+## 1. Estructura de Archivos
+
+Organiza los archivos en la siguiente estructura:
+
+```
+proyecto_geoespacial/
+├── api/
+│   ├── auth.php
+│   ├── categorias_eventos.php (implementar)
+│   ├── categorias_negocios.php (implementar)
+│   ├── encuestas.php (

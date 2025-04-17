@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GeoComercial - Mapa Interactivo</title>
+
+  <!-- Favicon -->
+  <link rel="shortcut icon" href="images/favicon.ico" type="image/x-icon" />
+
+  <!-- Estilos externos -->
+  <link rel="stylesheet" href="css/estilos-mapa-comercial.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+
+  <style>
+    #mapa_comercial {
+      width: 100%; 
+      height: calc(100vh - 100px);
+      margin: 0;
+      padding: 0;
+    }
+    .spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255,255,255,0.7);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .spinner-overlay.active {
+      visibility: visible;
+      opacity: 1;
+    }
+    .spinner {
+      border: 4px solid rgba(0,0,0,0.1);
+      border-radius: 50%;
+      border-top: 4px solid var(--color-primario, #007bff);
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Overlay de carga -->
+  <div class="spinner-overlay" id="cargando">
+    <div class="spinner"></div>
+  </div>
+
+  <div class="contenedor-app">
+    <!-- CABECERA -->
+    <header class="cabecera-app">
+      <div class="logo-app">
+        <img src="images/favicon.png" alt="Logo" />
+        <span>GeoComercial</span>
+      </div>
+      <nav class="nav-app" id="nav_usuario">
+        <!-- Se llenará dinámicamente según autenticación -->
+        <?php if(isset($usuarioLogueado) && $usuarioLogueado): ?>
+          <ul class="menu-nav">
+            <li><a href="views/perfil.php">Mi Perfil</a></li>
+            <li><a href="views/mis_negocios.php">Mis Negocios</a></li>
+            <li><a href="views/mis_eventos.php">Mis Eventos</a></li>
+            <li><a href="views/mis_ofertas.php">Mis Ofertas</a></li>
+            <li><a href="views/mis_encuestas.php">Mis Encuestas</a></li>
+          </ul>
+        <?php else: ?>
+          <ul class="menu-nav">
+            <li><a href="views/login.php">Iniciar Sesión</a></li>
+            <li><a href="views/registro.php">Registrarse</a></li>
+          </ul>
+        <?php endif; ?>
+      </nav>
+    </header>
+
+    <!-- MAPA -->
+    <div class="contenedor-mapa">
+      <div id="mapa_comercial"></div>
+
+      <!-- BOTÓN FLOTANTE -->
+      <div class="boton-flotante-crear">
+        <button class="boton-principal-crear" id="boton_principal_crear" aria-label="Abrir menú de creación">
+          <i class="fas fa-plus"></i>
+        </button>
+        <div class="menu-botones-crear oculto">
+          <button class="boton-crear-entidad" id="boton_crear_negocio" aria-label="Crear negocio">
+            <i class="fas fa-store"></i> Negocio
+          </button>
+          <button class="boton-crear-entidad" id="boton_crear_evento" aria-label="Crear evento">
+            <i class="fas fa-calendar-alt"></i> Evento
+          </button>
+          <button class="boton-crear-entidad" id="boton_crear_oferta" aria-label="Crear oferta">
+            <i class="fas fa-tag"></i> Oferta
+          </button>
+          <button class="boton-crear-entidad" id="boton_crear_encuesta" aria-label="Crear encuesta">
+            <i class="fas fa-poll"></i> Encuesta
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filtros-mapa">
+        <button class="filtro-btn" data-tipo="todos" id="filtro_todos">Todos</button>
+        <button class="filtro-btn" data-tipo="negocios" id="filtro_negocios">Negocios</button>
+        <button class="filtro-btn" data-tipo="eventos" id="filtro_eventos">Eventos</button>
+        <button class="filtro-btn" data-tipo="ofertas" id="filtro_ofertas">Ofertas</button>
+        <button class="filtro-btn" data-tipo="encuestas" id="filtro_encuestas">Encuestas</button>
+      </div>
+    </div>
+
+    <!-- PIE DE PÁGINA -->
+    <footer class="pie-app">
+      © <?php echo date('Y'); ?> GeoComercial. Todos los derechos reservados. <a href="views/terminos.php">Términos</a> · <a href="views/privacidad.php">Privacidad</a>
+    </footer>
+  </div>
+
+  <!-- NOTIFICACIONES -->
+  <div id="contenedor_notificaciones"></div>
+
+  <!-- Leaflet y plugins -->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
+  <!-- Scripts de la app -->
+  <script src="assets/js/app.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Referencia al overlay de carga
+      const spinnerOverlay = document.getElementById('cargando');
+      
+      // Función para mostrar/ocultar cargador
+      const mostrarCargador = (mostrar = true) => {
+        if (mostrar) {
+          spinnerOverlay.classList.add('active');
+        } else {
+          spinnerOverlay.classList.remove('active');
+        }
+      };
+
+      // Obtener parámetros de URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const lat = parseFloat(urlParams.get('lat')) || -34.603722; // Coordenada predeterminada
+      const lng = parseFloat(urlParams.get('lng')) || -58.381592; // Coordenada predeterminada
+      const zoom = parseInt(urlParams.get('zoom')) || 12;
+
+      // Inicializar el mapa
+      const map = L.map('mapa_comercial').setView([lat, lng], zoom);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+
+      // Agrupar marcadores similares
+      const markers = L.markerClusterGroup();
+      map.addLayer(markers);
+
+      // Categorías con iconos personalizados
+      const iconos = {
+        negocio: L.divIcon({className: 'marker-negocio', html: '<i class="fas fa-store"></i>'}),
+        evento: L.divIcon({className: 'marker-evento', html: '<i class="fas fa-calendar-alt"></i>'}),
+        oferta: L.divIcon({className: 'marker-oferta', html: '<i class="fas fa-tag"></i>'}),
+        encuesta: L.divIcon({className: 'marker-encuesta', html: '<i class="fas fa-poll"></i>'})
+      };
+
+      // Almacén de marcadores por tipo
+      const marcadoresPorTipo = {
+        negocios: [],
+        eventos: [],
+        ofertas: [],
+        encuestas: []
+      };
+
+      // Función para cargar datos desde un archivo PHP
+      async function cargarDatos(url, tipo) {
+        mostrarCargador(true);
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+          
+          const datos = await response.json();
+          
+          // Limpiar marcadores existentes de este tipo
+          if (marcadoresPorTipo[tipo]) {
+            marcadoresPorTipo[tipo].forEach(m => markers.removeLayer(m));
+            marcadoresPorTipo[tipo] = [];
+          }
+          
+          // Crear nuevos marcadores
+          datos.forEach(item => {
+            if (!item.latitud || !item.longitud) return;
+            
+            const marker = L.marker([item.latitud, item.longitud], {
+              icon: iconos[tipo.slice(0, -1)] || L.divIcon()
+            });
+            
+            // Información del popup
+            const titulo = item.titulo || item.nombre || 'Sin título';
+            const descripcion = item.descripcion || '';
+            const fechaInfo = item.fecha_inicio ? 
+              `<p><strong>Fecha: </strong>${new Date(item.fecha_inicio).toLocaleDateString()}</p>` : '';
+            
+            // Botón de detalles en el popup
+            const enlaceDetalles = `<a href="views/detalles_${tipo.slice(0, -1)}.php?id=${item.id}" 
+                                   class="boton-detalles">Ver detalles</a>`;
+            
+            // Contenido completo del popup
+            marker.bindPopup(`
+              <div class="popup-contenido">
+                <h3>${titulo}</h3>
+                <p>${descripcion}</p>
+                ${fechaInfo}
+                ${enlaceDetalles}
+              </div>
+            `);
+            
+            // Almacenar y agregar al cluster
+            marcadoresPorTipo[tipo].push(marker);
+            markers.addLayer(marker);
+          });
+          
+        } catch (error) {
+          console.error(`Error cargando ${tipo}:`, error);
+          mostrarNotificacion(`Error al cargar ${tipo}: ${error.message}`, 'error');
+        } finally {
+          mostrarCargador(false);
+        }
+      }
+
+      // Función para mostrar notificaciones
+      function mostrarNotificacion(mensaje, tipo = 'info') {
+        const contenedor = document.getElementById('contenedor_notificaciones');
+        const notif = document.createElement('div');
+        notif.className = `notificacion notificacion-${tipo}`;
+        notif.textContent = mensaje;
+        
+        contenedor.appendChild(notif);
+        
+        // Auto-eliminar después de unos segundos
+        setTimeout(() => {
+          notif.classList.add('desvanecer');
+          setTimeout(() => contenedor.removeChild(notif), 300);
+        }, 3000);
+      }
+
+      // Cargar todos los datos al inicio
+      try {
+        mostrarCargador(true);
+        await Promise.all([
+          cargarDatos('api/negocios.php?json=1', 'negocios'),
+          cargarDatos('api/eventos.php?json=1', 'eventos'),
+          cargarDatos('api/ofertas.php?json=1', 'ofertas'),
+          cargarDatos('api/encuestas.php?json=1', 'encuestas')
+        ]);
+        mostrarNotificacion('Todos los datos cargados correctamente');
+      } catch (e) {
+        mostrarNotificacion('Algunos datos no pudieron cargarse', 'advertencia');
+      } finally {
+        mostrarCargador(false);
+      }
+
+      // Filtros
+      document.getElementById('filtro_todos').addEventListener('click', async () => {
+        mostrarCargador(true);
+        // Mostrar todos los marcadores ya cargados
+        for (const tipo in marcadoresPorTipo) {
+          marcadoresPorTipo[tipo].forEach(m => markers.addLayer(m));
+        }
+        mostrarCargador(false);
+      });
+
+      document.getElementById('filtro_negocios').addEventListener('click', async () => {
+        mostrarCargador(true);
+        // Ocultar todos
+        markers.clearLayers();
+        // Mostrar solo negocios
+        marcadoresPorTipo['negocios'].forEach(m => markers.addLayer(m));
+        mostrarCargador(false);
+      });
+
+      document.getElementById('filtro_eventos').addEventListener('click', async () => {
+        mostrarCargador(true);
+        // Ocultar todos
+        markers.clearLayers();
+        // Mostrar solo eventos
+        marcadoresPorTipo['eventos'].forEach(m => markers.addLayer(m));
+        mostrarCargador(false);
+      });
+
+      document.getElementById('filtro_ofertas').addEventListener('click', async () => {
+        mostrarCargador(true);
+        // Ocultar todos
+        markers.clearLayers();
+        // Mostrar solo ofertas
+        marcadoresPorTipo['ofertas'].forEach(m => markers.addLayer(m));
+        mostrarCargador(false);
+      });
+
+      document.getElementById('filtro_encuestas').addEventListener('click', async () => {
+        mostrarCargador(true);
+        // Ocultar todos
+        markers.clearLayers(); 
+        // Mostrar solo encuestas
+        marcadoresPorTipo['encuestas'].forEach(m => markers.addLayer(m));
+        mostrarCargador(false);
+      });
+
+      // Botón flotante principal
+      const botonPrincipal = document.getElementById('boton_principal_crear');
+      const menu = document.querySelector('.menu-botones-crear');
+
+      botonPrincipal?.addEventListener('click', () => {
+        menu?.classList.toggle('oculto');
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.boton-flotante-crear')) {
+          menu?.classList.add('oculto');
+        }
+      });
+
+      // Botones para crear entidades
+      document.getElementById('boton_crear_negocio').addEventListener('click', () => {
+        window.location.href = 'views/formularioNegocio.html';
+      });
+
+      document.getElementById('boton_crear_evento').addEventListener('click', () => {
+        window.location.href = 'views/formulario_evento.php';
+      });
+
+      document.getElementById('boton_crear_oferta').addEventListener('click', () => {
+        window.location.href = 'views/formulario_oferta.php';
+      });
+
+      document.getElementById('boton_crear_encuesta').addEventListener('click', () => {
+        window.location.href = 'views/formulario_encuesta.php';
+      });
+    });
+  </script>
+</body>
+</html>
